@@ -1,8 +1,5 @@
-interface IRoute {
-  path: string;
-  name: string;
-  children?: readonly IRoute[];
-}
+import { RouteObject } from "react-router-dom";
+import { ReadonlyDeep } from "type-fest";
 
 type PathObj<Path extends string, CurrentPath extends string> = {
   path: CurrentPath;
@@ -19,7 +16,7 @@ type ReplaceTrailingSlash<T extends string> = T extends `//${infer R}` ? `/${R}`
 export type GetPath<Path extends string, CurrentPath extends string> = ReplaceTrailingSlash<`${Path}/${CurrentPath}`>;
 
 type RecursiveValues<T, Path extends string = ''> = T extends {
-    name: infer Name extends string;
+    id: infer Name extends string;
     path: infer CurrentPath extends string;
   }
   ? {
@@ -42,18 +39,18 @@ export type ExtractParams<Path> = Path extends `${infer Segment}/${infer Rest}`
   : ExtractParam<Path>
 
 const ROUTES_CONFIG = {
-  name: 'root',
+  id: 'root',
   path: '',
   children: [{
     path: 'tasks',
-    name: 'tasks',
+    id: 'tasks',
     children: [
-      { path: ':taskId', name: 'task' }
+      { path: ':taskId',  id: 'task' }
     ]
   }]
-} as const satisfies IRoute;
+} as const satisfies ReadonlyDeep<RouteObject>;
 
-export const transformRoutes = <T extends IRoute>(routes: T) => {
+export const transformRoutes = <T extends ReadonlyDeep<RouteObject>>(routes: T) => {
   // @ts-ignore
   const traverse = (current: IRoute, fullPath: string = current.path) => {
     const { path, children, name } = current;
