@@ -8,14 +8,37 @@ type PathObj<Path extends string, CurrentPath extends string> = {
   fullPath: Path;
 }
 
+export const pathObj = (path: string, fullPath: string): {
+  path: string;
+  fullPath: string;
+} => ({
+  path,
+  fullPath,
+})
+
 type MergeArrayOfObjects<T, Path extends string = ''> =
   T extends readonly [infer R, ...infer Rest]
     ? RecursiveValues<R, Path> & MergeArrayOfObjects<Rest, Path>
     : unknown;
 
+function mergeArrayOfObjects(arr: any[], path = '') {
+  const [first, ...rest] = arr;
+  if (first) {
+    return {
+      ...recursiveValues(first, path),
+      ...mergeArrayOfObjects(rest, path),
+    }
+  }
+  return {};
+}
+
 type ReplaceTrailingSlash<T extends string> = T extends `//${infer R}` ? `/${R}` : T;
 
 export type GetPath<Path extends string, CurrentPath extends string> = ReplaceTrailingSlash<`${Path}/${CurrentPath}`>;
+
+function getPath(path: string, currentPath: string) {
+  return `${path}/${currentPath}`.replace(/\/\//g, '/');
+}
 
 type RecursiveValues<T, Path extends string = ''> = T extends {
     id: infer Name extends string;
@@ -23,22 +46,61 @@ type RecursiveValues<T, Path extends string = ''> = T extends {
   }
   ? {
     [Prop in Name as Name]:
-    T extends { children: infer Children}
-      ? MergeArrayOfObjects<
-      Children,
-      GetPath<Path, CurrentPath>
-    > & PathObj<GetPath<Path, CurrentPath>, CurrentPath>
-      : PathObj<GetPath<Path, CurrentPath>, CurrentPath>
+      T extends { children: infer Children}
+        ? MergeArrayOfObjects<
+          Children,
+          GetPath<Path, CurrentPath>
+        > & PathObj<GetPath<Path, CurrentPath>, CurrentPath>
+        : PathObj<GetPath<Path, CurrentPath>, CurrentPath>
   }
   : object
 
-export type ExtractParam<Path, NextPart = {}> = Path extends `:${infer Param}`
-  ? Record<Param, string> & NextPart
-  : NextPart;
+function recursiveValues(obj: any, path = '') {
+  const { id, path: currentPath, children } = obj;
+  if (id && currentPath) {
+    if (children) {
+      return {
+        [id]: {
+          ...mergeArrayOfObjects(children, getPath(path, currentPath)),
+          ...pathObj(path, currentPath),
+        }
+      }
+    }
+    return {
+      [id]: pathObj(path, currentPath),
+    }
+  }
+  return {};
+}
+
+export type ExtractParam<Path> = Path extends `:${infer Param}`
+  ? Record<Param, string>
+  : { };
+
+export const extractParam = (path: string) => {
+  if (path.startsWith(':')) {
+    return {
+      [path.slice(1)]: '',
+    }
+  }
+  return {}
+}
 
 export type ExtractParams<Path> = Path extends `${infer Segment}/${infer Rest}`
-  ? ExtractParam<Segment, ExtractParams<Rest>>
+  ? ExtractParam<Segment> & ExtractParams<Rest>
   : ExtractParam<Path>
+
+export const extractParams = (path: string): Record<string, string> => {
+  const firstSlash = path.indexOf('/');
+  if (firstSlash === -1) {
+    return extractParam(path);
+  }
+  const [segment, rest] = [path.slice(0, firstSlash), path.slice(firstSlash + 1)];
+  return {
+    ...extractParam(segment),
+    ...extractParams(rest)
+  }
+}
 
 export const ROUTES_CONFIG = {
   id: 'root',
