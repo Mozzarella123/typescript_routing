@@ -1,5 +1,7 @@
 import { RouteObject } from "react-router-dom";
 import { ReadonlyDeep } from "type-fest";
+import Tasks from "./Tasks";
+import App from "./App";
 
 type PathObj<Path extends string, CurrentPath extends string> = {
   path: CurrentPath;
@@ -38,12 +40,14 @@ export type ExtractParams<Path> = Path extends `${infer Segment}/${infer Rest}`
   ? ExtractParam<Segment, ExtractParams<Rest>>
   : ExtractParam<Path>
 
-const ROUTES_CONFIG = {
+export const ROUTES_CONFIG = {
   id: 'root',
   path: '',
+  element: <App/>,
   children: [{
     path: 'tasks',
     id: 'tasks',
+    element: <Tasks />,
     children: [
       { path: ':taskId',  id: 'task' }
     ]
@@ -53,9 +57,10 @@ const ROUTES_CONFIG = {
 export const transformRoutes = <T extends ReadonlyDeep<RouteObject>>(routes: T) => {
   // @ts-ignore
   const traverse = (current: IRoute, fullPath: string = current.path) => {
-    const { path, children, name } = current;
+    const { path, children, id } = current;
     if (children == null) {
-      return { [name]: {
+      return { [id]: {
+          id,
           path,
           fullPath
         } };
@@ -63,7 +68,10 @@ export const transformRoutes = <T extends ReadonlyDeep<RouteObject>>(routes: T) 
 
     return {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      [name]: children.map((route) => traverse(route, `${fullPath}/${route.path}`)).reduce((previousValue, currentValue) => ({
+      [id]: children.map((route) => traverse(
+        route,
+        `${fullPath}/${route.path}`))
+        .reduce((previousValue, currentValue) => ({
         ...previousValue,
         ...currentValue
       }),{
