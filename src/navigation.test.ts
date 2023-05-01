@@ -1,5 +1,12 @@
 import { expectTypeOf } from "expect-type";
-import { extractParam, ExtractParam, extractParams, ExtractParams } from "./navigation";
+import {
+  extractParam,
+  ExtractParam,
+  extractParams,
+  ExtractParams,
+  mergeArrayOfObjects,
+  recursiveValues
+} from "./navigation";
 import { expect, it } from "vitest";
 
 it('ExtractParam type ', () => {
@@ -26,3 +33,48 @@ it('extractParams func', function () {
   expect(extractParams('/tasks/:taskId/:tab')).toEqual({ taskId: '', tab: '' });
   expect(extractParams('/path/without/params')).toEqual({ });
 });
+
+it('mergeArray func', function () {
+  expect(mergeArrayOfObjects([{
+    id: 'tasks',
+    path: '/tasks'
+  }, {
+    id: 'home',
+    path: '/home'
+  }])).toEqual({
+    tasks: {
+      path: '/tasks',
+      fullPath: '/tasks'
+    },
+    home: {
+      path: '/home',
+      fullPath: '/home'
+    }
+  })
+})
+
+it('recursiveValues func', function () {
+  expect(recursiveValues({ id: 'tasks', path: '/tasks'})).toEqual({
+    tasks: {
+      path: '/tasks',
+      fullPath: '/tasks'
+    }
+  });
+  expect(recursiveValues({
+    id: 'tasks',
+    path: '/tasks',
+    children: [{
+      id: 'task',
+      path: ':taskId'
+    }]
+  })).toEqual({
+    tasks: {
+      path: '/tasks',
+      fullPath: '/tasks',
+      task: {
+        path: ':taskId',
+        fullPath: '/tasks/:taskId'
+      }
+    }
+  });
+})

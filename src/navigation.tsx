@@ -21,7 +21,7 @@ type MergeArrayOfObjects<T, Path extends string = ''> =
     ? RecursiveValues<R, Path> & MergeArrayOfObjects<Rest, Path>
     : unknown;
 
-function mergeArrayOfObjects(arr: any[], path = '') {
+export function mergeArrayOfObjects(arr: RouteObject[], path = '') {
   const [first, ...rest] = arr;
   if (first) {
     return {
@@ -40,34 +40,40 @@ function getPath(path: string, currentPath: string) {
   return `${path}/${currentPath}`.replace(/\/\//g, '/');
 }
 
-type RecursiveValues<T, Path extends string = ''> = T extends {
-    id: infer Name extends string;
-    path: infer CurrentPath extends string;
-  }
+type RecursiveValues<
+  T,
+  Path extends string = ''
+> = T extends {
+  id: infer Name extends string;
+  path: infer CurrentPath extends string;
+}
   ? {
-    [Prop in Name as Name]:
-      T extends { children: infer Children}
-        ? MergeArrayOfObjects<
-          Children,
-          GetPath<Path, CurrentPath>
-        > & PathObj<GetPath<Path, CurrentPath>, CurrentPath>
-        : PathObj<GetPath<Path, CurrentPath>, CurrentPath>
+    [Prop in Name]: T extends { children: infer Children }
+      ? MergeArrayOfObjects<
+        Children,
+        GetPath<Path, CurrentPath>
+      > & PathObj<GetPath<Path, CurrentPath>, CurrentPath>
+      : PathObj<GetPath<Path, CurrentPath>, CurrentPath>
   }
   : object
 
-function recursiveValues(obj: any, path = '') {
-  const { id, path: currentPath, children } = obj;
+export function recursiveValues(obj: RouteObject, path = '') {
+  const {
+    id,
+    path: currentPath,
+    children
+  } = obj;
   if (id && currentPath) {
     if (children) {
       return {
         [id]: {
           ...mergeArrayOfObjects(children, getPath(path, currentPath)),
-          ...pathObj(path, currentPath),
+          ...pathObj(currentPath, getPath(path, currentPath)),
         }
       }
     }
     return {
-      [id]: pathObj(path, currentPath),
+      [id]: pathObj(currentPath, getPath(path, currentPath)),
     }
   }
   return {};
@@ -77,13 +83,17 @@ export type ExtractParam<Path> = Path extends `:${infer Param}`
   ? Record<Param, string>
   : { };
 
-export const extractParam = (path: string) => {
-  if (path.startsWith(':')) {
+export const extractParam = (path: any) => {
+  if (typeof path === "string" && path.startsWith(':')) {
+    const param = path.slice(1);
+
     return {
-      [path.slice(1)]: '',
+      [param]: '',
     }
   }
-  return {}
+  else {
+    return {}
+  }
 }
 
 export type ExtractParams<Path> = Path extends `${infer Segment}/${infer Rest}`

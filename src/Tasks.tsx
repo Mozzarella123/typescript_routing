@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Table } from "@gravity-ui/uikit";
-import { useParams } from "react-router-dom";
+import { generatePath, Link, useNavigate, useParams } from "react-router-dom";
+import { ROUTES } from "./navigation";
 
 type Task = {
   id: number
@@ -28,11 +29,23 @@ const data = [
 ]
 function Tasks() {
     const { taskId } = useParams();
+    const navigate = useNavigate()
     return (
         <>
           <Table data={data} columns={[{
             id: 'name',
             name: 'id',
+            template: item => (
+              <Link
+                to={generatePath(
+                  ROUTES.root.tasks.task.fullPath,
+                  {
+                    taskId: item.id.toString(),
+                  }
+                )}>
+                {item.name}
+              </Link>
+            )
           }, {
             id: 'description',
             name: 'description',
@@ -42,7 +55,8 @@ function Tasks() {
           }, {
             id: 'dueDate',
             name: 'dueDate',
-          }]}/>
+          }]}
+          />
           <Modal open={taskId !== undefined}>
             <div className="flex flex-col gap-2">
               <h1>Task Details</h1>
