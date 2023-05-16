@@ -3,12 +3,15 @@ import { ReadonlyDeep } from "type-fest";
 import Tasks from "./Tasks";
 import App from "./App";
 
-type PathObj<Path extends string, CurrentPath extends string> = {
-  path: CurrentPath;
-  fullPath: Path;
+type ConstantRoute<
+  FullPath extends string,
+  Path extends string
+> = Omit<RouteObject, 'path'> & {
+  path: Path;
+  fullPath: FullPath;
 }
 
-export const pathObj = (path: string, fullPath: string): {
+export const constantRoute = (path: string, fullPath: string): {
   path: string;
   fullPath: string;
 } => ({
@@ -18,14 +21,14 @@ export const pathObj = (path: string, fullPath: string): {
 
 type MergeArrayOfObjects<T, Path extends string = ''> =
   T extends readonly [infer R, ...infer Rest]
-    ? RecursiveValues<R, Path> & MergeArrayOfObjects<Rest, Path>
+    ? RecursiveTransform<R, Path> & MergeArrayOfObjects<Rest, Path>
     : unknown;
 
 export function mergeArrayOfObjects(arr: RouteObject[], path = '') {
   const [first, ...rest] = arr;
   if (first) {
     return {
-      ...recursiveValues(first, path),
+      ...recursiveTransform(first, path),
       ...mergeArrayOfObjects(rest, path),
     }
   }
@@ -34,46 +37,57 @@ export function mergeArrayOfObjects(arr: RouteObject[], path = '') {
 
 type ReplaceTrailingSlash<T extends string> = T extends `//${infer R}` ? `/${R}` : T;
 
-export type GetPath<Path extends string, CurrentPath extends string> = ReplaceTrailingSlash<`${Path}/${CurrentPath}`>;
+export type ConcatPath<FullPath extends string, Path extends string> = ReplaceTrailingSlash<`${FullPath}/${Path}`>;
 
-function getPath(path: string, currentPath: string) {
-  return `${path}/${currentPath}`.replace(/\/\//g, '/');
+const replaceTrailingSlash = (path: string) => path.replace(/\/\//g, '/');
+
+function concatPath(path: string, currentPath: string) {
+  return replaceTrailingSlash(`${path}/${currentPath}`);
 }
 
-type RecursiveValues<
-  T,
-  Path extends string = ''
-> = T extends {
+type RecursiveTransform<
+  RouteObject,
+  FullPath extends string = ''
+> = RouteObject extends {
   id: infer Name extends string;
-  path: infer CurrentPath extends string;
-}
-  ? {
-    [Prop in Name]: T extends { children: infer Children }
-      ? MergeArrayOfObjects<
-        Children,
-        GetPath<Path, CurrentPath>
-      > & PathObj<GetPath<Path, CurrentPath>, CurrentPath>
-      : PathObj<GetPath<Path, CurrentPath>, CurrentPath>
-  }
-  : object
+  path: infer Path extends string;
+} ? TransformIdToProperty<Name, RouteObject, Path, FullPath>
+  : { }
 
-export function recursiveValues(obj: RouteObject, path = '') {
+type TransformIdToProperty<
+  ID extends string,
+  RouteObject,
+  Path extends string,
+  FullPath extends string,
+  ConcatedPath extends string = ConcatPath<FullPath, Path>
+> = {
+  [Prop in ID]: RouteObject extends { children: infer Children }
+    ? MergeArrayOfObjects<
+    Children,
+    ConcatedPath> & ConstantRoute<ConcatedPath, Path>
+    : ConstantRoute<ConcatedPath, Path>
+}
+
+export function recursiveTransform(obj: RouteObject, fullPath = '') {
   const {
     id,
-    path: currentPath,
+    path,
     children
   } = obj;
-  if (id && currentPath) {
+  if (id && path) {
+    const concatedPath = concatPath(fullPath, path);
+
     if (children) {
+
       return {
         [id]: {
-          ...mergeArrayOfObjects(children, getPath(path, currentPath)),
-          ...pathObj(currentPath, getPath(path, currentPath)),
+          ...mergeArrayOfObjects(children, concatedPath),
+          ...constantRoute(path, concatedPath),
         }
       }
     }
     return {
-      [id]: pathObj(currentPath, getPath(path, currentPath)),
+      [id]: constantRoute(path, concatedPath),
     }
   }
   return {};
@@ -152,7 +166,7 @@ export const transformRoutes = <T extends ReadonlyDeep<RouteObject>>(routes: T) 
       }),
     };
   };
-  return traverse(routes) as RecursiveValues<T>;
+  return traverse(routes) as RecursiveTransform<T>;
 };
 
 export const ROUTES = transformRoutes(ROUTES_CONFIG);

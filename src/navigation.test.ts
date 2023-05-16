@@ -5,14 +5,14 @@ import {
   extractParams,
   ExtractParams,
   mergeArrayOfObjects,
-  recursiveValues
+  recursiveTransform
 } from "./navigation";
 import { expect, it } from "vitest";
 
 it('ExtractParam type ', () => {
   expectTypeOf({ taskId: '' }).toMatchTypeOf<ExtractParam<':taskId'>>();
   // @ts-expect-error
-  expectTypeOf({ tassId: '' }).toMatchTypeOf<ExtractParam<':taskId'>>();
+  expectTypeOf({ taskId: 1 }).toMatchTypeOf<ExtractParam<':taskId'>>();
 });
 
 it('extractParam func', function () {
@@ -54,13 +54,13 @@ it('mergeArray func', function () {
 })
 
 it('recursiveValues func', function () {
-  expect(recursiveValues({ id: 'tasks', path: '/tasks'})).toEqual({
+  expect(recursiveTransform({ id: 'tasks', path: '/tasks'})).toEqual({
     tasks: {
       path: '/tasks',
       fullPath: '/tasks'
     }
   });
-  expect(recursiveValues({
+  expect(recursiveTransform({
     id: 'tasks',
     path: '/tasks',
     children: [{
